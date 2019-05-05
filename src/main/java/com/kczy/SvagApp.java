@@ -15,6 +15,11 @@ import java.util.Timer;
  * @author shirui
  */
 public class SvagApp {
+
+    public static final int SECOND = 1000 * 1;
+    public static final int MINUTE = SECOND * 60;
+    public static final int HOUR = MINUTE * 60;
+
     public static void main(String[] args) {
         if (args.length > 0) {
             for (int i = 0; i < args.length; i++) {
@@ -62,9 +67,7 @@ public class SvagApp {
      * 启动客户端
      */
     private static void startClient() {
-//        ClientMsgSender client = new ClientMsgSender();
-//        client.queryServers();
         Timer timer = new Timer();
-        timer.schedule(new MvPictureTask(), 0, 1000 * 5);
+        timer.schedule(new MvPictureTask(), 0, HOUR);
     }
 }

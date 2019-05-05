@@ -117,7 +117,11 @@ public class ServerMsgProcessor {
             log.append("消息体长度=" + msgBodyByteArray.length);
             System.out.println(log.toString());
 
-            resultBytes = handlers.get(svcType).get(id).processMessage(msgBodyByteArray);
+            if (null != handlers.get(svcType) && null != handlers.get(svcType).get(id)) {
+                resultBytes = handlers.get(svcType).get(id).processMessage(msgBodyByteArray);
+            } else {
+                resultBytes = new byte[0];
+            }
         } catch (Exception e) {
             e.printStackTrace();
             resultBytes = new byte[0];

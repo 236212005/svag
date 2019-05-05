@@ -40,7 +40,7 @@ public class QryDiskMsgHandler implements IHandler {
 
     @Override
     public int getMsgId() {
-        return QryDiskMsgBuilder.MSG_ID;
+        return QryDiskMsgBuilder.MSGID_QRY_DISK;
     }
 
     @Override

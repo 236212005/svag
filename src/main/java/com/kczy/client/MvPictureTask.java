@@ -1,8 +1,15 @@
 package com.kczy.client;
 
+import com.kczy.common.dao.Connector;
+import com.kczy.common.dao.Sql;
 import com.kczy.common.util.SendMailUtil;
 import com.kczy.message.QryDiskMsgBuilder;
+import com.kczy.message.QryImgMsgBuilder;
+import com.kczy.message.SendImgMsgBuilder;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.Calendar;
 
@@ -15,6 +22,8 @@ public class MvPictureTask extends AbsClientTask {
     private static final int INDEX_PORT = 1;
     private static final int INDEX_PATH = 2;
     private static final int INDEX_DESC = 3;
+    private static final String BASE_IMG_FOLDER = "/home/shirui/图片";
+    public static final int CODE_FILE_IS_EXIST = 1;
 
     @Override
     public void run() {
@@ -27,8 +36,7 @@ public class MvPictureTask extends AbsClientTask {
 
     private void queryServerStatus() {
         // 巡检目标服务器的磁盘使用情况
-//        String[][] rs = Connector.querySql(Sql.QUERY_IMG_SERVERS);
-        String[][] rs = new String[][]{new String[]{"localhost", "18086", "/", "80%"}};
+        String[][] rs = Connector.querySql(Sql.QUERY_IMG_SERVERS);
 
         for (String[] row : rs) {
             String ip = row[INDEX_IP] != null && !"".equals(row[INDEX_IP]) ? row[INDEX_IP] : "localhost";
@@ -55,8 +63,52 @@ public class MvPictureTask extends AbsClientTask {
                 }
             } else {
                 //未超过阈值，则移动图片到服务器
+                moveImage(new File(BASE_IMG_FOLDER), ip, port);
             }
         }
+    }
+
+    /**
+     * 移动图片到服务器
+     */
+    private void moveImage(File curFile, String ip, int port) {
+        if (curFile.isDirectory()) {
+            File[] childs = curFile.listFiles();
+            for (File nextFile : childs) {
+                moveImage(nextFile, ip, port);
+            }
+        } else {
+            //TODO 询问服务器是否存在同样图片
+            byte[] qryImgResp = ClientMsgSender.getInstance().sendRequest(
+                    new QryImgMsgBuilder().buildMsg(curFile), ip, port
+            );
+            if (qryImgResp != null & qryImgResp.length > 0 && qryImgResp[0] == CODE_FILE_IS_EXIST) {
+                //TODO 若存在，则删除本地图片
+                System.out.println(deleteCurFile(curFile));
+            } else {
+                //TODO 若不存在，则传输本地图片给服务器，并取得服务器返回的处理结果，与本地图片进行校验
+                byte[] sndImgResp = new byte[0];
+                try {
+                    sndImgResp = ClientMsgSender.getInstance().sendRequest(
+                            new SendImgMsgBuilder().buildMsg(curFile), ip, port
+                    );
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                ByteBuffer resp = ByteBuffer.wrap(sndImgResp);
+                long resultCode = resp.getLong();
+                if (resultCode == curFile.length()) {
+                    //TODO 若校验成功，则删除本地图片
+                    System.out.println(deleteCurFile(curFile));
+                } else {
+                    //TODO 若校验失败，则重新传输，直至成功}
+                }
+            }
+        }
+    }
+
+    private String deleteCurFile(File curFile) {
+        return "Delete file " + curFile.getAbsolutePath() + (curFile.delete() ? "成功." : "失败.");
     }
 
     /**
@@ -102,7 +154,7 @@ public class MvPictureTask extends AbsClientTask {
         // 邮件正文
         String htmlContent = "磁盘空间使用率已超过预设值，请尽快检查！";
         // 收件人
-        String[] receivers = new String[]{"x", "x"};
+        String[] receivers = new String[]{"shirui0000@dingtalk.com"};
         return new SendMailUtil().sendEmail(title, htmlContent, receivers, null);
     }
 }
